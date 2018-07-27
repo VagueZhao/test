@@ -1,0 +1,50 @@
+# -*- coding: utf-8 -*-
+import itchat
+import time
+import requests
+import hashlib
+from wxpy import *
+
+# 图灵机器人
+def get_response(msg, FromUserName):
+    api_url = 'http://www.tuling123.com/openapi/api'
+    apikey = '4bc32d41c10be18627438ae45eb839ac'
+    # data中有userd才能实现上下文一致的聊天效果。
+    hash = hashlib.md5()
+    userid = hash.update(FromUserName.encode('utf-8'))
+    data = {'key': apikey,
+            'info': msg,
+            'userid': userid
+            }
+    try:
+        req = requests.post(api_url, data=data).json()
+        return req.get('text')
+    except:
+        return
+
+itchat.auto_login()
+friend=itchat.search_friends("二姑娘")[0]
+
+#适合 个人间聊天
+@itchat.msg_register(friend,['Text', 'Map', 'Card', 'Note', 'Sharing'])
+def Tuling_robot(msg):
+    print(msg)
+    respones = get_response('Content', 'FromUserName')
+    itchat.send(respones,'FromUserName')
+
+
+#返回图片，录音，视频
+@itchat.msg_register(friend,['Picture', 'Recording', 'Attachment', 'Video'])
+def download_files(msg):
+    fileDir = '%s%s'%(msg['Type'], int(time.time()))
+    msg['Text'](fileDir)
+    itchat.send('%s received'%msg['Type'], msg['FromUserName'])
+    itchat.send('@%s@%s'%('img' if msg['Type'] == 'Picture' else 'fil', fileDir), msg['FromUserName'])
+
+#自动同意陌生人好友申请
+@itchat.msg_register('Friends')
+def add_friend(msg):
+    itchat.add_friend(**msg['Text'])
+    itchat.send_msg('Nice to meet you!', msg['RecommendInfo']['UserName'])
+
+
